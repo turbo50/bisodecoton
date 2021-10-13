@@ -48,6 +48,26 @@ check_for_update <- function() {
 #---Obtention des jeux de donnees--------------------------------------------------------------
 #=========================================================================================================================
 
+
+get_dataHuilerie <- function() {
+  sqlQuery(cn, 
+           "
+                select 
+                    d.Year as Periode, d.DayOfWeek, d.MonthName,
+                    d.Date DateOpe, d.Month, h.CodeUsine, h.NomUsine Usine, q.ChefQuart, t.Libelle Equipe, q.NomQuart Quart, 
+                    p.GraineRecepKG, p.EcartKG, p.GraineMoKG, p.AlibetProduitSac, p.Farine21ProduitSac,
+                    CoqueIncorporeKG, CoqueChaudiereKG, HuileNProduitLT, HuileNMOLT, HuileRaffineLT, NbCartonDiamaorU
+                from FaitHlProduction p
+                left join DimDate d on d.IdDateSK=p.IdDateSK
+                left join DimQuart q on q.IdQuartSK=p.IdQuartSK
+                left join DimTranche_horaire t on t.IdTrancheSK=p.IdTrancheSK
+                left join DimUsinehuilerie h on h.IdUsineSK=p.IdUsineSK
+                
+          "  
+  )
+}
+
+
 get_dataProduction <- function() {
     sqlQuery(cn, 
              "
@@ -1597,6 +1617,21 @@ Server <- function(input, output, session) {
                 })
                 
                 #-------------------------------------------------------------------
+                
+                #---------------Chargement des widgets HUILERIES---------------------------
+                
+                output$valueH1 <- renderValueBox({
+                  dataf_Huilerie<-get_dataHuilerie()[complete.cases(get_dataHuilerie()$GraineRecepKG),]
+                  dataf_Huilerie<-dataf_Huilerie %>% filter(Periode == input$Year & Month==input$Month)
+                  ValeurH1 <- sum(dataf_Huilerie$GraineRecepKG)/1000
+                  valueH1G<<-ValeurH1
+                  valueBox(formatC(ValeurH1,digits = 0,format ="f",big.mark=' ' ),'GraineRecep(t)',color = "green")
+                  
+                  
+                  
+                })
+                
+                #---------------FIN Chargement des widgets HUILERIES-----------------------
                 
                 
                 #creating the valueBoxOutput content
