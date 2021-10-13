@@ -56,7 +56,13 @@ get_dataHuilerie <- function() {
                     d.Year as Periode, d.DayOfWeek, d.MonthName,
                     d.Date DateOpe, d.Month, h.CodeUsine, h.NomUsine Usine, q.ChefQuart, t.Libelle Equipe, q.NomQuart Quart, 
                     p.GraineRecepKG, p.EcartKG, p.GraineMoKG, p.AlibetProduitSac, p.Farine21ProduitSac,
-                    CoqueIncorporeKG, CoqueChaudiereKG, HuileNProduitLT, HuileNMOLT, HuileRaffineLT, NbCartonDiamaorU
+                    CoqueIncorporeKG, CoqueChaudiereKG, HuileNProduitLT, HuileNMOLT, HuileRaffineLT, NbCartonDiamaorU,
+					-- on calcule tous les kpis
+					case 
+					    when GraineMoKG = 0 then 0.0 else (HuileNProduitLT / GraineMoKG) * 100 end as TauxHnGr, 
+					case
+					    when GraineMoKG = 0 then 0.0 else ((p.AlibetProduitSac + p.Farine21ProduitSac) / GraineMoKG) * 100 end as TauxTtxGr
+
                 from FaitHlProduction p
                 left join DimDate d on d.IdDateSK=p.IdDateSK
                 left join DimQuart q on q.IdQuartSK=p.IdQuartSK
@@ -627,13 +633,21 @@ frow1Synhese <- fluidRow(
 
 #--------------------------UI Huilerie---------------------------------------
 frowH1 <- fluidRow(
-  valueBoxOutput("valueH1",width = 2)
+   valueBoxOutput("valueH1",width = 2)
   ,valueBoxOutput("valueH2",width = 2)
   ,valueBoxOutput("valueH3",width = 2)
   ,valueBoxOutput("valueH4",width = 2)
   ,valueBoxOutput("valueH5",width = 2)
 )
-#----------------------------------------------------------------------------
+
+frowH2 <- fluidRow(
+   valueBoxOutput("valueH21",width = 2)
+  ,valueBoxOutput("valueH22",width = 2)
+  ,valueBoxOutput("valueH23",width = 2)
+  ,valueBoxOutput("valueH24",width = 2)
+  ,valueBoxOutput("valueH25",width = 2)
+)
+#---------------FIN UI Huilerie--------------------------------------------
 
 
 
@@ -1620,16 +1634,56 @@ Server <- function(input, output, session) {
                 
                 #---------------Chargement des widgets HUILERIES---------------------------
                 
-                output$valueH1 <- renderValueBox({
-                  dataf_Huilerie<-get_dataHuilerie()[complete.cases(get_dataHuilerie()$GraineRecepKG),]
+                
+                
+                #---------Premiere ligne page huileries
+                output$valueH1<-renderValueBox({
+                  dataf_Huilerie<-get_dataHuilerie()[complete.cases(get_dataHuilerie()$TauxHnGr),]
                   dataf_Huilerie<-dataf_Huilerie %>% filter(Periode == input$Year & Month==input$Month)
-                  ValeurH1 <- sum(dataf_Huilerie$GraineRecepKG)/1000
+                  ValeurH1<-sum(dataf_Huilerie$TauxHnGr)
                   valueH1G<<-ValeurH1
-                  valueBox(formatC(ValeurH1,digits = 0,format ="f",big.mark=' ' ),'GraineRecep(t)',color = "green")
-                  
-                  
+                  valueBox(formatC(ValeurH1, digits = 2, format ="f",big.mark=' ' ), 'Rend. HN sur Graine(%)', color = "green")
                   
                 })
+                
+                output$valueH2<-renderValueBox({
+                  dataf_Huilerie<- get_dataHuilerie()[complete.cases(get_dataHuilerie()$TauxTtxGr),]
+                  dataf_Huilerie<-dataf_Huilerie %>% filter(Periode == input$Year & Month==input$Month)
+                  ValeurH2<-sum(dataf_Huilerie$TauxTtxGr) 
+                  valueH2G<<-ValeurH2
+                  valueBox(formatC(ValeurH2, digits = 2, format ="f", big.mark=' ' ), 'Rend. Tourteaux sur Graine(%)', color = "green")
+                  
+                })
+                
+                output$valueH3<-renderValueBox({
+                  dataf_Huilerie<- get_dataHuilerie()[complete.cases(get_dataHuilerie()$NbCartonDiamaorU),]
+                  dataf_Huilerie<-dataf_Huilerie %>% filter(Periode == input$Year & Month==input$Month)
+                  ValeurH3<-sum(dataf_Huilerie$NbCartonDiamaorU) 
+                  valueH3G<<-ValeurH3
+                  valueBox(formatC(ValeurH3, digits = 2, format ="f", big.mark=' ' ), 'Productivite Diamaor(Unite)', color = "green")
+                  
+                })
+                
+                #---------Deuxieme ligne page huileries
+                output$valueH21 <- renderValueBox({
+                  dataf_Huilerie <- get_dataHuilerie()[complete.cases(get_dataHuilerie()$GraineRecepKG),]
+                  dataf_Huilerie <- dataf_Huilerie %>% filter(Periode == input$Year & Month==input$Month)
+                  ValeurH21 <- sum(dataf_Huilerie$GraineRecepKG) / 1000
+                  valueH21G<<-ValeurH21
+                  valueBox(formatC(ValeurH21, digits = 2, format ="f",big.mark=' ' ), 'Graine Receptionnee(t)', color = "yellow")
+                  
+                })
+                
+                output$valueH22 <- renderValueBox({
+                  dataf_Huilerie <- get_dataHuilerie()[complete.cases(get_dataHuilerie()$GraineMoKG),]
+                  dataf_Huilerie <- dataf_Huilerie %>% filter(Periode == input$Year & Month==input$Month)
+                  ValeurH22 <- sum(dataf_Huilerie$GraineMoKG) / 1000
+                  valueH22G<<-ValeurH22
+                  valueBox(formatC(ValeurH22, digits = 2, format ="f", big.mark=' ' ), 'Graine M.O.(t)', color = "yellow")
+                  
+                })
+                      
+                      
                 
                 #---------------FIN Chargement des widgets HUILERIES-----------------------
                 
@@ -4613,7 +4667,7 @@ Server <- function(input, output, session) {
                 
                 appendTab(inputId = "tabselected",
                           
-                          tabPanel("HUILERIES", frowH1
+                          tabPanel("HUILERIES", frowH1, frowH2
                                    
                           ) # closes tabPanel,
                 )
