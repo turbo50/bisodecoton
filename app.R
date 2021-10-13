@@ -605,6 +605,17 @@ frow1Synhese <- fluidRow(
 )
 #----------------------------------------------------------------------------
 
+#--------------------------UI Huilerie---------------------------------------
+frowH1 <- fluidRow(
+  valueBoxOutput("valueH1",width = 2)
+  ,valueBoxOutput("valueH2",width = 2)
+  ,valueBoxOutput("valueH3",width = 2)
+  ,valueBoxOutput("valueH4",width = 2)
+  ,valueBoxOutput("valueH5",width = 2)
+)
+#----------------------------------------------------------------------------
+
+
 
 frow1 <- fluidRow(
   valueBoxOutput("value1",width = 2)
@@ -1474,6 +1485,14 @@ Server <- function(input, output, session) {
       get_dataFactureDef()
     }
     )
+    
+    dataf_Huilerie = reactive({
+      invalidateLater(900000,session)
+      input$Year
+      input$Usine
+      input$Month
+      get_dataHuilerie()
+    })
     
     
     reqUsine<-
@@ -4556,6 +4575,14 @@ Server <- function(input, output, session) {
                                    
                           ) # closes tabPanel,
                 )
+                
+                appendTab(inputId = "tabselected",
+                          
+                          tabPanel("HUILERIES", frowH1
+                                   
+                          ) # closes tabPanel,
+                )
+                
                 appendTab(inputId = "tabselected",
                           tabPanel("PARAMETRAGE",
                                    tabsetPanel(id="Consultation",
