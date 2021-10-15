@@ -658,11 +658,11 @@ frowH3 <- fluidRow(
       ,plotlyOutput("ReceptionGraine", height = "290px")
   ),
   box(width = 6,
-      title = "EVOLUTION DES MISE EN OEUVRE DES GRAINES"
+      title = "RECEPTION DES GRAINES PAR TRANCHE HORAIRE"
       ,status = "primary"
       ,solidHeader = TRUE 
       ,collapsible = TRUE 
-      ,DTOutput("MiseEnOeuvreGraine",height = "290px",width = "80%")
+      ,plotlyOutput("RecepGraineByTranche",height = "290px")
   ),
   
 )
@@ -1741,10 +1741,8 @@ Server <- function(input, output, session) {
                   
                     dataf_Huilerie<-rbind(dataf_Huilerie,dataf_Huilerie_)
                   
-                    dataf_Huilerie<-dataf_Huilerie %>%
-                    bind_rows(.id = "location") %>% 
-                    group_by(DateOpe) %>%
-                    summarize(TonnageFibre=100*sum(GraineMoKG)/sum(GraineRecepKG)
+                    dataf_Huilerie<-dataf_Huilerie %>% bind_rows(.id = "location") %>% group_by(DateOpe) %>% 
+                      summarize(TonnageFibre=100*sum(GraineMoKG)/sum(GraineRecepKG)
                     )
                   
                     dataf_Huilerie['Objectif'] = 43
@@ -1762,6 +1760,37 @@ Server <- function(input, output, session) {
                 
                 
                 
+                        ##----------Comparaison des receptions par tranche_horaire--------------
+                 
+                  
+                  
+                  output$RecepGraineByTranche <- renderPlotly({
+                    dataf_Huilerie<-get_dataHuilerie()[complete.cases(get_dataHuilerie()$GraineRecepKG),]
+                    dataf_Huilerie<-dataf_Huilerie %>% group_by(Equipe) %>% summarize(GraineRecepKG=sum(GraineRecepKG)/1000)
+                    #VTotalFibre <-sum(dataf_Huilerie$TonNet)
+                    dataf_Huilerie$Qte<-(dataf_Huilerie$GraineRecepKG)
+                    
+                    dataf_Huilerie<-arrange(dataf_Huilerie, -Qte) 
+                    dataf_Huilerie = dataf_Huilerie %>% mutate_if(is.factor,
+                                                                      fct_explicit_na,
+                                                                      na_level = "NA")
+                    
+                    dataf_Huilerie$Equipe  <- with(dataf_Huilerie, reorder(Equipe, -Qte))
+                    p<- ggplot(data=dataf_Huilerie, aes(x = reorder(Equipe, Qte), y = Qte, fill = Equipe)) + 
+                      geom_bar(stat = "identity")+ 
+                      coord_flip()+
+                      labs(x = "Tranche horaire", 
+                           y = "Quantite(t)"
+                      )+
+                      theme(axis.title.y=element_blank(),
+                            axis.text.y=element_blank(),
+                            axis.ticks.y=element_blank())
+                    #theme_minimal()
+                    ggplotly(p)
+                    
+                  }
+                  )
+                                  
                 #---------------FIN Chargement des widgets HUILERIES-----------------------
                 
                 
