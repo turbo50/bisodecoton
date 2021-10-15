@@ -693,6 +693,25 @@ frowH3 <- fluidRow(
   ),
   
 )
+
+
+frowH4 <- fluidRow(
+  box(width = 6,
+      title = "EVALUATION DES MISES EN OEUVRE PAR QUART"
+      ,status = "primary"
+      ,solidHeader = TRUE 
+      ,collapsible = TRUE 
+      ,plotlyOutput("MoByQuart", height = "290px")
+  ),
+  box(width = 6,
+      title = "EVALUATION DES MISES EN OEUVRE PAR TRANCHE HORAIRE"
+      ,status = "primary"
+      ,solidHeader = TRUE 
+      ,collapsible = TRUE 
+      ,plotlyOutput("MoByTranche",height = "290px")
+  ),
+  
+)
 #---------------FIN UI Huilerie--------------------------------------------
 
 
@@ -1711,7 +1730,7 @@ Server <- function(input, output, session) {
                 
                 
                 
-                #---------Premiere ligne page huileries
+                #---------Premiere ligne page huileries : Ligne des Kpis------
                 output$valueH1<-renderValueBox({
                   dataf_Huilerie<-get_dataHuilerie()[complete.cases(get_dataHuilerie()$TauxHnGr),]
                   dataf_Huilerie<-dataf_Huilerie %>% filter(Periode == input$Year & CodeUsine == input$Huilerie & Month==input$Month)
@@ -1735,17 +1754,17 @@ Server <- function(input, output, session) {
                   dataf_Huilerie<-dataf_Huilerie %>% filter(Periode == input$Year & CodeUsine == input$Huilerie  & Month==input$Month)
                   ValeurH3<-sum(dataf_Huilerie$NbCartonDiamaorU) 
                   valueH3G<<-ValeurH3
-                  valueBox(formatC(ValeurH3, digits = 2, format ="f", big.mark=' ' ), 'Productivite Diamaor(Unite)', color = "green")
+                  valueBox(formatC(ValeurH3, digits = 0, format ="f", big.mark=' ' ), 'Productivite Diamaor(U)', color = "green")
                   
                 })
                 
-                #---------Deuxieme ligne page huileries
+                #---------Deuxieme ligne page huileries : Ligne des autres mesures utiles-------------
                 output$valueH21 <- renderValueBox({
                   dataf_Huilerie <- get_dataHuilerie()[complete.cases(get_dataHuilerie()$GraineRecepKG),]
                   dataf_Huilerie <- dataf_Huilerie %>% filter(Periode == input$Year & CodeUsine == input$Huilerie  & Month==input$Month)
                   ValeurH21 <- sum(dataf_Huilerie$GraineRecepKG) / 1000
                   valueH21G<<-ValeurH21
-                  valueBox(formatC(ValeurH21, digits = 2, format ="f",big.mark=' ' ), 'Graine Receptionnee(t)', color = "yellow")
+                  valueBox(formatC(ValeurH21, digits = 2, format ="f",big.mark=' ' ), 'Graine Receptionnee(T)', color = "yellow")
                   
                 })
                 
@@ -1754,7 +1773,31 @@ Server <- function(input, output, session) {
                   dataf_Huilerie <- dataf_Huilerie %>% filter(Periode == input$Year & CodeUsine == input$Huilerie  & Month==input$Month)
                   ValeurH22 <- sum(dataf_Huilerie$GraineMoKG) / 1000
                   valueH22G<<-ValeurH22
-                  valueBox(formatC(ValeurH22, digits = 2, format ="f", big.mark=' ' ), 'Graine M.O.(t)', color = "yellow")
+                  valueBox(formatC(ValeurH22, digits = 2, format ="f", big.mark=' ' ), 'Graine M.O.(T)', color = "yellow")
+                  
+                })
+          
+                
+                output$valueH23 <- renderValueBox({
+                  dataf_Huilerie <- get_dataHuilerie()[complete.cases(get_dataHuilerie()$AlibetProduitSac),]
+                  dataf_Huilerie <- dataf_Huilerie %>% filter(Periode == input$Year & CodeUsine == input$Huilerie  & Month==input$Month)
+                  ValeurH23 <- sum(dataf_Huilerie$AlibetProduitSac)
+                  
+                  dataf_Huilerie <- get_dataHuilerie()[complete.cases(get_dataHuilerie()$Farine21ProduitSac),]
+                  dataf_Huilerie <- dataf_Huilerie %>% filter(Periode == input$Year & CodeUsine == input$Huilerie  & Month==input$Month)
+                  NbSacFarine21 <- sum(dataf_Huilerie$Farine21ProduitSac)
+                  
+                  nbSacsTotal<<-ValeurH23 + NbSacFarine21
+                  valueBox(formatC(nbSacsTotal, digits = 0, format ="f", big.mark=' ' ), 'Sacs de tourteaux(U)', color = "yellow")
+                  
+                })
+                
+                output$valueH24 <- renderValueBox({
+                  dataf_Huilerie <- get_dataHuilerie()[complete.cases(get_dataHuilerie()$HuileNProduitLT),]
+                  dataf_Huilerie <- dataf_Huilerie %>% filter(Periode == input$Year & CodeUsine == input$Huilerie  & Month==input$Month)
+                  ValeurH24 <- sum(dataf_Huilerie$HuileNProduitLT) 
+                  valueH24G<<-ValeurH24
+                  valueBox(formatC(ValeurH24, digits = 2, format ="f", big.mark=' ' ), 'Huile neutre produite(L)', color = "yellow")
                   
                 })
                       
@@ -1787,44 +1830,94 @@ Server <- function(input, output, session) {
                       geom_line(aes(x=DateOpe,y=TonnageFibre),color='red') + 
                       geom_line(aes(x=DateOpe,y=Objectif),color='blue') + 
                       ylab('Values')+xlab('date')
-                    
-                    
-                  }
-                }
-                )
+                   }
+                })
                 
                 
                 
                         ##----------Comparaison des receptions par tranche_horaire--------------
-                 
+                output$RecepGraineByTranche <- renderPlotly({
+                  datef_huilerie_p <- dataf_Huilerie_param
+                  datef_huilerie_p<-dataf_Huilerie_param()[complete.cases(dataf_Huilerie_param()$GraineRecepKG),]
+                  datef_huilerie_p<-datef_huilerie_p %>% group_by(Equipe) %>% summarize(GraineRecepKG=sum(GraineRecepKG)/1000)
+                  datef_huilerie_p$Qte<-(datef_huilerie_p$GraineRecepKG)
+                  
+                  datef_huilerie_p<-arrange(datef_huilerie_p, -Qte) 
+                  datef_huilerie_p = datef_huilerie_p %>% mutate_if(is.factor,
+                                                                    fct_explicit_na,
+                                                                    na_level = "NA")
+                  
+                  datef_huilerie_p$Equipe  <- with(datef_huilerie_p, reorder(Equipe, -Qte))
+                  p<- ggplot(data=datef_huilerie_p, aes(x = reorder(Equipe, Qte), y = Qte, fill = Equipe)) + 
+                    geom_bar(stat = "identity")+ 
+                    coord_flip()+
+                    labs(x = "Tranche horaire", 
+                         y = "Quantite(t)"
+                    )+
+                    theme(axis.title.y=element_blank(),
+                          axis.text.y=element_blank(),
+                          axis.ticks.y=element_blank())
+                  #theme_minimal()
+                  ggplotly(p)
+                  
+                })
+                  
+                ##----------Evaluation des mises en oeuvre par quart--------------
+                output$MoByQuart <- renderPlotly({
+                  datef_huilerie_pq <- dataf_Huilerie_param
+                  datef_huilerie_pq<-dataf_Huilerie_param()[complete.cases(dataf_Huilerie_param()$GraineMoKG),]
+                  datef_huilerie_pq<-datef_huilerie_pq %>% group_by(Quart) %>% summarize(GraineMoKG=sum(GraineMoKG)/1000)
+                  datef_huilerie_pq$Qte<-(datef_huilerie_pq$GraineMoKG)
+                  
+                  datef_huilerie_pq<-arrange(datef_huilerie_pq, -Qte) 
+                  datef_huilerie_pq = datef_huilerie_pq %>% mutate_if(is.factor,
+                                                                    fct_explicit_na,
+                                                                    na_level = "NA")
+                  
+                  datef_huilerie_pq$Quart  <- with(datef_huilerie_pq, reorder(Quart, -Qte))
+                  p<- ggplot(data=datef_huilerie_pq, aes(x = reorder(Quart, Qte), y = Qte, fill = Quart)) + 
+                    geom_bar(stat = "identity")+ 
+                    coord_flip()+
+                    labs(x = "Nom du quart", 
+                         y = "Quantite(t)"
+                    )+
+                    theme(axis.title.y=element_blank(),
+                          axis.text.y=element_blank(),
+                          axis.ticks.y=element_blank())
+                  #theme_minimal()
+                  ggplotly(p)
+                  
+                })
+                
+                ##----------Evaluation des mises en oeuvre par tranche horaire--------------
+                output$MoByTranche <- renderPlotly({
+                  datef_huilerie_p <- dataf_Huilerie_param
+                  datef_huilerie_p<-dataf_Huilerie_param()[complete.cases(dataf_Huilerie_param()$GraineMoKG),]
+                  datef_huilerie_p<-datef_huilerie_p %>% group_by(Equipe) %>% summarize(GraineMoKG=sum(GraineMoKG)/1000)
+                  datef_huilerie_p$Qte<-(datef_huilerie_p$GraineMoKG)
+                  
+                  datef_huilerie_p<-arrange(datef_huilerie_p, -Qte) 
+                  datef_huilerie_p = datef_huilerie_p %>% mutate_if(is.factor,
+                                                                    fct_explicit_na,
+                                                                    na_level = "NA")
+                  
+                  datef_huilerie_p$Equipe  <- with(datef_huilerie_p, reorder(Equipe, -Qte))
+                  p<- ggplot(data=datef_huilerie_p, aes(x = reorder(Equipe, Qte), y = Qte, fill = Equipe)) + 
+                    geom_bar(stat = "identity")+ 
+                    coord_flip()+
+                    labs(x = "Tranche horaire", 
+                         y = "Quantite(t)"
+                    )+
+                    theme(axis.title.y=element_blank(),
+                          axis.text.y=element_blank(),
+                          axis.ticks.y=element_blank())
+                  #theme_minimal()
+                  ggplotly(p)
+                  
+                })
+                
                   
                   
-                  output$RecepGraineByTranche <- renderPlotly({
-                    datef_huilerie_p <- dataf_Huilerie_param
-                    datef_huilerie_p<-dataf_Huilerie_param()[complete.cases(dataf_Huilerie_param()$GraineRecepKG),]
-                    datef_huilerie_p<-datef_huilerie_p %>% group_by(Equipe) %>% summarize(GraineRecepKG=sum(GraineRecepKG)/1000)
-                    datef_huilerie_p$Qte<-(datef_huilerie_p$GraineRecepKG)
-                    
-                    datef_huilerie_p<-arrange(datef_huilerie_p, -Qte) 
-                    datef_huilerie_p = datef_huilerie_p %>% mutate_if(is.factor,
-                                                                      fct_explicit_na,
-                                                                      na_level = "NA")
-                    
-                    datef_huilerie_p$Equipe  <- with(datef_huilerie_p, reorder(Equipe, -Qte))
-                    p<- ggplot(data=datef_huilerie_p, aes(x = reorder(Equipe, Qte), y = Qte, fill = Equipe)) + 
-                      geom_bar(stat = "identity")+ 
-                      coord_flip()+
-                      labs(x = "Tranche horaire", 
-                           y = "Quantite(t)"
-                      )+
-                      theme(axis.title.y=element_blank(),
-                            axis.text.y=element_blank(),
-                            axis.ticks.y=element_blank())
-                    #theme_minimal()
-                    ggplotly(p)
-                    
-                  }
-                  )
                                   
                 #---------------FIN Chargement des widgets HUILERIES-----------------------
                 
@@ -4808,7 +4901,7 @@ Server <- function(input, output, session) {
                 
                 appendTab(inputId = "tabselected",
                           
-                          tabPanel("HUILERIES", frowH1, frowH2, frowH3
+                          tabPanel("HUILERIES", frowH1, frowH2, frowH3, frowH4
                                    
                           ) # closes tabPanel,
                 )
