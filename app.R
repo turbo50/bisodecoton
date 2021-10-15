@@ -661,19 +661,16 @@ frow1Synhese <- fluidRow(
 
 #--------------------------UI Huilerie---------------------------------------
 frowH1 <- fluidRow(
-   valueBoxOutput("valueH1",width = 2)
-  ,valueBoxOutput("valueH2",width = 2)
-  ,valueBoxOutput("valueH3",width = 2)
-  ,valueBoxOutput("valueH4",width = 2)
-  ,valueBoxOutput("valueH5",width = 2)
+   valueBoxOutput("TauxHnGr", width = 2)
+  ,valueBoxOutput("TauxTxGr", width = 2)
+  ,valueBoxOutput("ProductiviteDiamaor", width = 2)
 )
 
 frowH2 <- fluidRow(
-   valueBoxOutput("valueH21",width = 2)
-  ,valueBoxOutput("valueH22",width = 2)
-  ,valueBoxOutput("valueH23",width = 2)
-  ,valueBoxOutput("valueH24",width = 2)
-  ,valueBoxOutput("valueH25",width = 2)
+   valueBoxOutput("QteGraineRecep", width = 2)
+  ,valueBoxOutput("QteGraineMO", width = 2)
+  ,valueBoxOutput("NbSacsTotal", width = 2)
+  ,valueBoxOutput("QteHuileNProduitLT", width = 2)
 )
 
 frowH3 <- fluidRow(
@@ -1731,73 +1728,83 @@ Server <- function(input, output, session) {
                 
                 
                 #---------Premiere ligne page huileries : Ligne des Kpis------
-                output$valueH1<-renderValueBox({
-                  dataf_Huilerie<-get_dataHuilerie()[complete.cases(get_dataHuilerie()$TauxHnGr),]
+                        #-- Kpi Taux Rendement huile neutre / graine
+                output$TauxHnGr<-renderValueBox({
+                  dataf_Huilerie<-get_dataHuilerie()[complete.cases(get_dataHuilerie()$HuileNProduitLT),]
                   dataf_Huilerie<-dataf_Huilerie %>% filter(Periode == input$Year & CodeUsine == input$Huilerie & Month==input$Month)
-                  ValeurH1<-sum(dataf_Huilerie$TauxHnGr)
-                  valueH1G<<-ValeurH1
-                  valueBox(formatC(ValeurH1, digits = 2, format ="f",big.mark=' ' ), 'Rend. HN sur Graine(%)', color = "green")
+                  QteHuileNProduite<-sum(dataf_Huilerie$HuileNProduitLT)
+                  QteGraineMoKG<-sum(dataf_Huilerie$GraineMoKG)
+                  
+                  TauxHnGr<<-0
+                  if(QteGraineMoKG != 0){
+                    TauxHnGr = (QteHuileNProduite / QteGraineMoKG) * 100
+                  }
+                  valueBox(formatC(TauxHnGr, digits = 2, format ="f",big.mark=' ' ), 'Rend. HN sur Graine(%)', color = "green")
                   
                 })
-                
-                output$valueH2<-renderValueBox({
-                  dataf_Huilerie<- get_dataHuilerie()[complete.cases(get_dataHuilerie()$TauxTtxGr),]
+                          #-- Kpi Taux Rendement Tourteau / graine
+                output$TauxTxGr<-renderValueBox({
+                  dataf_Huilerie<-get_dataHuilerie()[complete.cases(get_dataHuilerie()$AlibetProduitSac),]
                   dataf_Huilerie<-dataf_Huilerie %>% filter(Periode == input$Year & CodeUsine == input$Huilerie & Month==input$Month)
-                  ValeurH2<-sum(dataf_Huilerie$TauxTtxGr) 
-                  valueH2G<<-ValeurH2
-                  valueBox(formatC(ValeurH2, digits = 2, format ="f", big.mark=' ' ), 'Rend. Tourteaux sur Graine(%)', color = "green")
+                  QteAlibetProduitSac<-sum(dataf_Huilerie$AlibetProduitSac)
+                  QteFarine21ProduitSac<-sum(dataf_Huilerie$Farine21ProduitSac)
+                  QteGraineMoKG <- sum(dataf_Huilerie$GraineMoKG)
+                  
+                  TauxTxGr<<-0
+                  if(QteGraineMoKG != 0){
+                    TauxTxGr = ( (QteAlibetProduitSac + QteFarine21ProduitSac) / QteGraineMoKG) * 100
+                  }
+                  valueBox(formatC(TauxTxGr, digits = 2, format ="f", big.mark=' ' ), 'Rend. Tourteaux sur Graine(%)', color = "green")
                   
                 })
-                
-                output$valueH3<-renderValueBox({
+                          #-- Kpi Productivite Diamaor
+                output$ProductiviteDiamaor<-renderValueBox({
                   dataf_Huilerie<- get_dataHuilerie()[complete.cases(get_dataHuilerie()$NbCartonDiamaorU),]
                   dataf_Huilerie<-dataf_Huilerie %>% filter(Periode == input$Year & CodeUsine == input$Huilerie  & Month==input$Month)
-                  ValeurH3<-sum(dataf_Huilerie$NbCartonDiamaorU) 
-                  valueH3G<<-ValeurH3
-                  valueBox(formatC(ValeurH3, digits = 0, format ="f", big.mark=' ' ), 'Productivite Diamaor(U)', color = "green")
+                  ProductiviteDiamaor<-sum(dataf_Huilerie$NbCartonDiamaorU) 
+                  valueBox(formatC(ProductiviteDiamaor, digits = 0, format ="f", big.mark=' ' ), 'Productivite Diamaor(U)', color = "green")
                   
                 })
                 
                 #---------Deuxieme ligne page huileries : Ligne des autres mesures utiles-------------
-                output$valueH21 <- renderValueBox({
+                          #---- Mesure : Graine Receptionnee
+                output$QteGraineRecep <- renderValueBox({
                   dataf_Huilerie <- get_dataHuilerie()[complete.cases(get_dataHuilerie()$GraineRecepKG),]
                   dataf_Huilerie <- dataf_Huilerie %>% filter(Periode == input$Year & CodeUsine == input$Huilerie  & Month==input$Month)
-                  ValeurH21 <- sum(dataf_Huilerie$GraineRecepKG) / 1000
-                  valueH21G<<-ValeurH21
-                  valueBox(formatC(ValeurH21, digits = 2, format ="f",big.mark=' ' ), 'Graine Receptionnee(T)', color = "yellow")
+                  QteGraineRecep <- sum(dataf_Huilerie$GraineRecepKG) / 1000
+                  QteGraineRecepG<<-QteGraineRecep
+                  valueBox(formatC(QteGraineRecep, digits = 2, format ="f",big.mark=' ' ), 'Graine Receptionnee(T)', color = "yellow")
                   
                 })
-                
-                output$valueH22 <- renderValueBox({
+                          #---- Mesure : Graine Mise en oeuvre
+                output$QteGraineMO <- renderValueBox({
                   dataf_Huilerie <- get_dataHuilerie()[complete.cases(get_dataHuilerie()$GraineMoKG),]
                   dataf_Huilerie <- dataf_Huilerie %>% filter(Periode == input$Year & CodeUsine == input$Huilerie  & Month==input$Month)
-                  ValeurH22 <- sum(dataf_Huilerie$GraineMoKG) / 1000
-                  valueH22G<<-ValeurH22
-                  valueBox(formatC(ValeurH22, digits = 2, format ="f", big.mark=' ' ), 'Graine M.O.(T)', color = "yellow")
+                  QteGraineMO <- sum(dataf_Huilerie$GraineMoKG) / 1000
+                  valueBox(formatC(QteGraineMO, digits = 2, format ="f", big.mark=' ' ), 'Graine M.O.(T)', color = "yellow")
                   
                 })
           
-                
-                output$valueH23 <- renderValueBox({
+                            #---- Mesure : Nombre de Sacs de tourteaux
+                output$NbSacsTotal <- renderValueBox({
                   dataf_Huilerie <- get_dataHuilerie()[complete.cases(get_dataHuilerie()$AlibetProduitSac),]
                   dataf_Huilerie <- dataf_Huilerie %>% filter(Periode == input$Year & CodeUsine == input$Huilerie  & Month==input$Month)
-                  ValeurH23 <- sum(dataf_Huilerie$AlibetProduitSac)
+                  QteAlibetProduitSac <- sum(dataf_Huilerie$AlibetProduitSac)
                   
                   dataf_Huilerie <- get_dataHuilerie()[complete.cases(get_dataHuilerie()$Farine21ProduitSac),]
                   dataf_Huilerie <- dataf_Huilerie %>% filter(Periode == input$Year & CodeUsine == input$Huilerie  & Month==input$Month)
                   NbSacFarine21 <- sum(dataf_Huilerie$Farine21ProduitSac)
                   
-                  nbSacsTotal<<-ValeurH23 + NbSacFarine21
-                  valueBox(formatC(nbSacsTotal, digits = 0, format ="f", big.mark=' ' ), 'Sacs de tourteaux(U)', color = "yellow")
+                  NbSacsTotal<<-QteAlibetProduitSac + NbSacFarine21
+                  valueBox(formatC(NbSacsTotal, digits = 0, format ="f", big.mark=' ' ), 'Sacs de tourteaux(U)', color = "yellow")
                   
                 })
-                
-                output$valueH24 <- renderValueBox({
+                            #---- Mesure : Huile neutre produite
+                output$QteHuileNProduitLT <- renderValueBox({
                   dataf_Huilerie <- get_dataHuilerie()[complete.cases(get_dataHuilerie()$HuileNProduitLT),]
                   dataf_Huilerie <- dataf_Huilerie %>% filter(Periode == input$Year & CodeUsine == input$Huilerie  & Month==input$Month)
-                  ValeurH24 <- sum(dataf_Huilerie$HuileNProduitLT) 
-                  valueH24G<<-ValeurH24
-                  valueBox(formatC(ValeurH24, digits = 2, format ="f", big.mark=' ' ), 'Huile neutre produite(L)', color = "yellow")
+                  QteHuileNProduitLT <- sum(dataf_Huilerie$HuileNProduitLT) 
+                  valueBox(formatC(QteHuileNProduitLT, digits = 2, format ="f", big.mark=' ' ), 'Huile neutre produite(L)', color = "yellow")
                   
                 })
                       
