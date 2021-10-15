@@ -27,13 +27,14 @@ theme_set(theme_bw())
 library(shinyjs)
 library(scales)
 library(lubridate)
-library(shinydashboardPlus)
-library(shinyscreenshot)
+#library(shinydashboardPlus)
+#library(shinyscreenshot)
 
 #=========================================================================================================================
 #---Connection  la BD--------------------------------------------------------------------  
 #=========================================================================================================================
-cn <- odbcDriverConnect(connection="Driver={SQL Server};server=DI-LPTP-16;Port=1433;database=DWH_Coton;uid=SA;pwd=Damico5089@;")
+#cn <- odbcDriverConnect(connection="Driver={SQL Server};server=DI-LPTP-16;Port=1433;database=DWH_Coton;uid=SA;pwd=Damico5089@;")
+cn <- odbcDriverConnect(connection="Driver={SQL Server};server=10.100.2.26;Port=1433;database=DWH_Coton;uid=SA;pwd=Sdcc@2021;")
 #------------------------------------------------------------------------------------------
 
 #=========================================================================================================================

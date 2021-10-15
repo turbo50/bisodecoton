@@ -1,0 +1,19 @@
+proxy:
+title: Tableau de bord SODECOTON
+port: 8080
+authentication: simple
+admin-groups: admins
+users:
+- name: admin
+password: admin
+groups: admins
+docker:
+url: http://localhost:2375
+specs:
+- id: cotoncameroun
+display-name: cotoncameroun
+container-cmd: ["R", "-e", "shiny::runApp('/root/cotoncameroun')"]
+container-image: shiny-cotoncameroun-app
+access-groups: admins
+logging:
+file: shinyproxy.log
