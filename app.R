@@ -153,12 +153,39 @@ get_dataClassement <- function() {
 '
 VYear<-2020
 VIdUsune<-"0"
+VIdHuilerie<-"1"
 VMonth<-1
 VMonthPrec<-0
 nb<-0
 value1G<-0
 
 VCodeSociete<<-'Sodecoton'
+
+get_dataHuilerie_param <- function() {
+  req<-"
+                select 
+                    d.Year as Periode, d.DayOfWeek, d.MonthName,
+                    d.Date DateOpe, d.Month, h.CodeUsine, h.NomUsine Usine, q.ChefQuart, t.Libelle Equipe, q.NomQuart Quart, 
+                    p.GraineRecepKG, p.EcartKG, p.GraineMoKG, p.AlibetProduitSac, p.Farine21ProduitSac,
+                    CoqueIncorporeKG, CoqueChaudiereKG, HuileNProduitLT, HuileNMOLT, HuileRaffineLT, NbCartonDiamaorU,
+      					-- on calcule tous les kpis
+      					case 
+      					    when GraineMoKG = 0 then 0.0 else (HuileNProduitLT / GraineMoKG) * 100 end as TauxHnGr, 
+      					case
+      					    when GraineMoKG = 0 then 0.0 else ((p.AlibetProduitSac + p.Farine21ProduitSac) / GraineMoKG) * 100 end as TauxTtxGr
+      
+                      from FaitHlProduction p
+                      left join DimDate d on d.IdDateSK=p.IdDateSK
+                      left join DimQuart q on q.IdQuartSK=p.IdQuartSK
+                      left join DimTranche_horaire t on t.IdTrancheSK=p.IdTrancheSK
+                      left join DimUsinehuilerie h on h.IdUsineSK=p.IdUsineSK
+                      where d.Year= cast(? as varchar) and d.Month=cast(? as varchar) and h.CodeUsine = cast(? as varchar)
+                
+          "  
+  myvalue<-data.frame(VYear, VMonth, VIdHuilerie)
+  sqlExecute(cn, req, myvalue, fetch=TRUE)
+}
+
 
 get_dataClassement <- function() { #Obtention des donnees 
   req<-"select 
@@ -1547,6 +1574,14 @@ Server <- function(input, output, session) {
       get_dataHuilerie()
     })
     
+    dataf_Huilerie_param = reactive({
+      invalidateLater(900000,session)
+      input$Year
+      input$Huilerie
+      input$Month
+      get_dataHuilerie_param()
+    })
+    
     #--- On recupere toutes les huileries--------
     reqHuilerie<-
       sqlQuery(cn," select ' ' CodeUsine,' ' NomUsine
@@ -1583,7 +1618,7 @@ Server <- function(input, output, session) {
     
     #----On capture tous les changements de valeurs dans la liste deroulante sur les huileries-----
     observeEvent(input$Huilerie, {
-      VCodeUsine<<-input$Huilerie
+      VIdHuilerie <<-input$Huilerie
     })
     
     observeEvent(input$Year, {
@@ -1765,18 +1800,18 @@ Server <- function(input, output, session) {
                   
                   
                   output$RecepGraineByTranche <- renderPlotly({
-                    dataf_Huilerie<-get_dataHuilerie()[complete.cases(get_dataHuilerie()$GraineRecepKG),]
-                    dataf_Huilerie<-dataf_Huilerie %>% group_by(Equipe) %>% summarize(GraineRecepKG=sum(GraineRecepKG)/1000)
-                    #VTotalFibre <-sum(dataf_Huilerie$TonNet)
-                    dataf_Huilerie$Qte<-(dataf_Huilerie$GraineRecepKG)
+                    datef_huilerie_p <- dataf_Huilerie_param
+                    datef_huilerie_p<-dataf_Huilerie_param()[complete.cases(dataf_Huilerie_param()$GraineRecepKG),]
+                    datef_huilerie_p<-datef_huilerie_p %>% group_by(Equipe) %>% summarize(GraineRecepKG=sum(GraineRecepKG)/1000)
+                    datef_huilerie_p$Qte<-(datef_huilerie_p$GraineRecepKG)
                     
-                    dataf_Huilerie<-arrange(dataf_Huilerie, -Qte) 
-                    dataf_Huilerie = dataf_Huilerie %>% mutate_if(is.factor,
+                    datef_huilerie_p<-arrange(datef_huilerie_p, -Qte) 
+                    datef_huilerie_p = datef_huilerie_p %>% mutate_if(is.factor,
                                                                       fct_explicit_na,
                                                                       na_level = "NA")
                     
-                    dataf_Huilerie$Equipe  <- with(dataf_Huilerie, reorder(Equipe, -Qte))
-                    p<- ggplot(data=dataf_Huilerie, aes(x = reorder(Equipe, Qte), y = Qte, fill = Equipe)) + 
+                    datef_huilerie_p$Equipe  <- with(datef_huilerie_p, reorder(Equipe, -Qte))
+                    p<- ggplot(data=datef_huilerie_p, aes(x = reorder(Equipe, Qte), y = Qte, fill = Equipe)) + 
                       geom_bar(stat = "identity")+ 
                       coord_flip()+
                       labs(x = "Tranche horaire", 
