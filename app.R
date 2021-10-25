@@ -34,8 +34,8 @@ library(rAmCharts4)
 #=========================================================================================================================
 #---Connection  la BD--------------------------------------------------------------------  
 #=========================================================================================================================
-#cn <- odbcDriverConnect(connection="Driver={SQL Server};server=DI-LPTP-16;Port=1433;database=DWH_Coton;uid=SA;pwd=Damico5089@;")
-cn <- odbcDriverConnect(connection="Driver={SQL Server};server=10.100.2.26;Port=1433;database=DWH_Coton;uid=SA;pwd=Sdcc@2021;")
+cn <- odbcDriverConnect(connection="Driver={SQL Server};server=XXXXX;Port=1433;database=DWH_Coton;uid=SA;pwd=XXXXXX;")
+
 #------------------------------------------------------------------------------------------
 
 #=========================================================================================================================
