@@ -34,7 +34,7 @@ library(rAmCharts4)
 #=========================================================================================================================
 #---Connection  la BD--------------------------------------------------------------------  
 #=========================================================================================================================
-cn <- odbcDriverConnect(connection="Driver={SQL Server};server=XXXXX;Port=1433;database=DWH_Coton;uid=SA;pwd=XXXXXX;")
+cn <- odbcDriverConnect(connection="Driver={SQL Server};server=10.100.2.26;Port=1433;database=DWH_Coton;uid=SA;pwd=Sdcc@2021;")
 
 #------------------------------------------------------------------------------------------
 
@@ -1822,7 +1822,7 @@ Server <- function(input, output, session) {
                             #---- Mesure : Huile neutre produite
                 output$QteHuileNProduitLT <- renderValueBox({
                   dataf_Huilerie <- dataf_Huilerie_param()[complete.cases(get_dataHuilerie()$HuileNProduitLT),]
-                  #dataf_Huilerie <- dataf_Huilerie %>% filter(Periode == input$Year & CodeUsine == input$Huilerie  & Month==input$Month)
+                  dataf_Huilerie <- dataf_Huilerie %>% filter(Periode == input$Year & CodeUsine == input$Huilerie  & Month==input$Month)
                   QteHuileNProduitLT <- sum(dataf_Huilerie$HuileNProduitLT) 
                   valueBox(formatC(QteHuileNProduitLT, digits = 2, format ="f", big.mark=' ' ), 'Huile neutre produite(L)', color = "yellow")
                   
