@@ -55,7 +55,7 @@ get_dataHuilerie <- function() {
   sqlQuery(cn, 
            "
                 select 
-                    d.Year as Periode, d.DayOfWeek, d.MonthName,
+                    d.Year as Periode, d.DayOfWeek, d.MonthName, 
                     d.Date DateOpe, d.Month, h.CodeUsine, h.NomUsine Usine, q.ChefQuart, t.Libelle Equipe, q.NomQuart Quart, 
                     p.GraineRecepKG, p.EcartKG, p.GraineMoKG, p.AlibetProduitSac, p.Farine21ProduitSac,
                     CoqueIncorporeKG, CoqueChaudiereKG, HuileNProduitLT, HuileNMOLT, HuileRaffineLT, NbCartonDiamaorU,
@@ -166,7 +166,7 @@ VCodeSociete<<-'Sodecoton'
 get_dataHuilerie_param <- function() {
   req<-"
                 select 
-                    d.Year as Periode, d.DayOfWeek, d.MonthName,
+                    d.Year as Periode, d.DayOfWeek, d.MonthName, day(d.date) Jour,
                     d.Date DateOpe, d.Month, h.CodeUsine, h.NomUsine Usine, q.ChefQuart, t.Libelle Equipe, q.NomQuart Quart, 
                     p.GraineRecepKG, p.EcartKG, p.GraineMoKG, p.AlibetProduitSac, p.Farine21ProduitSac,  p.AlibetProduitSac + p.Farine21ProduitSac as Tourteau,
                     CoqueIncorporeKG, CoqueChaudiereKG, HuileNProduitLT, HuileNMOLT, HuileRaffineLT, NbCartonDiamaorU,
@@ -681,7 +681,7 @@ frowH3 <- fluidRow(
       ,status = "primary"
       ,solidHeader = TRUE 
       ,collapsible = TRUE 
-      ,plotlyOutput("ReceptionGraine", height = "290px")
+      ,amChart4Output("CourbeReceptionGraine", height = "290px")
   ),
   box(width = 6,
       title = "RECEPTION DES GRAINES PAR TRANCHE HORAIRE"
@@ -1821,40 +1821,26 @@ Server <- function(input, output, session) {
                 })
                             #---- Mesure : Huile neutre produite
                 output$QteHuileNProduitLT <- renderValueBox({
-                  dataf_Huilerie <- get_dataHuilerie()[complete.cases(get_dataHuilerie()$HuileNProduitLT),]
-                  dataf_Huilerie <- dataf_Huilerie %>% filter(Periode == input$Year & CodeUsine == input$Huilerie  & Month==input$Month)
+                  dataf_Huilerie <- dataf_Huilerie_param()[complete.cases(get_dataHuilerie()$HuileNProduitLT),]
+                  #dataf_Huilerie <- dataf_Huilerie %>% filter(Periode == input$Year & CodeUsine == input$Huilerie  & Month==input$Month)
                   QteHuileNProduitLT <- sum(dataf_Huilerie$HuileNProduitLT) 
                   valueBox(formatC(QteHuileNProduitLT, digits = 2, format ="f", big.mark=' ' ), 'Huile neutre produite(L)', color = "yellow")
                   
                 })
                       
-                #----------DIAGRAMME EVOLUTION RECEPTION/MISE EN OEUVRE------------
-                  output$ReceptionGraine <- renderPlotly({
-                    dataf_Huilerie_<-dataf_Huilerie()[complete.cases(dataf_Huilerie()$GraineRecepKG),]
-                    dataf_Huilerie_<-dataf_Huilerie_ %>% filter(Periode == input$Year & CodeUsine == input$Huilerie   & Month==input$Month)
-                    dataf_Huilerie_<-dataf_Huilerie_ %>% group_by(DateOpe) %>% summarize(GraineRecepKG=sum(GraineRecepKG),GraineMoKG=sum(0))
+                #----------DIAGRAMME EVOLUTION DES RECEPTIONS DE GRAINE------------
+                
+                output$CourbeReceptionGraine <- renderAmChart4({
                   
-                    dataf_Huilerie<-dataf_Huilerie()[complete.cases(dataf_Huilerie()$GraineMoKG),]
-                    dataf_Huilerie<-dataf_Huilerie %>% filter(Periode == input$Year & CodeUsine == input$Huilerie  & Month==input$Month)
-                    dataf_Huilerie<-dataf_Huilerie %>%
-                    group_by(DateOpe) %>%
-                    summarize(GraineRecepKG=sum(0),GraineMoKG=sum(GraineMoKG)
-                    )
+                  dataf_Huilerie_<-dataf_Huilerie_param()[complete.cases(dataf_Huilerie_param()),]
+                  dataf_Huilerie_<-dataf_Huilerie_ %>% group_by(Jour) %>% summarize(GraineRecepKG=sum(GraineRecepKG))
                   
-                    dataf_Huilerie<-rbind(dataf_Huilerie,dataf_Huilerie_)
                   
-                    dataf_Huilerie<-dataf_Huilerie %>% bind_rows(.id = "location") %>% group_by(DateOpe) %>% 
-                      summarize(TonnageFibre=100*sum(GraineMoKG)/sum(GraineRecepKG)
-                    )
-                  
-                    dataf_Huilerie['Objectif'] = 43
-                  
-                  if(nrow(dataf_Huilerie)>0){
-                    p<-ggplot(data=dataf_Huilerie) + 
-                      geom_line(aes(x=DateOpe,y=TonnageFibre),color='red') + 
-                      geom_line(aes(x=DateOpe,y=Objectif),color='blue') + 
-                      ylab('Values')+xlab('date')
-                   }
+                  dat <- data.frame(
+                    Jour = dataf_Huilerie_$Jour,
+                    Quantite = dataf_Huilerie_$GraineRecepKG
+                  )  
+                    amLineChart(data = dat, data2 = NULL, xValue = "Jour", yValues = "Quantite", draggable = TRUE)
                 })
                 
                 
