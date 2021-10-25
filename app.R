@@ -27,6 +27,7 @@ theme_set(theme_bw())
 library(shinyjs)
 library(scales)
 library(lubridate)
+library(rAmCharts4)
 #library(shinydashboardPlus)
 #library(shinyscreenshot)
 
@@ -167,7 +168,7 @@ get_dataHuilerie_param <- function() {
                 select 
                     d.Year as Periode, d.DayOfWeek, d.MonthName,
                     d.Date DateOpe, d.Month, h.CodeUsine, h.NomUsine Usine, q.ChefQuart, t.Libelle Equipe, q.NomQuart Quart, 
-                    p.GraineRecepKG, p.EcartKG, p.GraineMoKG, p.AlibetProduitSac, p.Farine21ProduitSac,
+                    p.GraineRecepKG, p.EcartKG, p.GraineMoKG, p.AlibetProduitSac, p.Farine21ProduitSac,  p.AlibetProduitSac + p.Farine21ProduitSac as Tourteau,
                     CoqueIncorporeKG, CoqueChaudiereKG, HuileNProduitLT, HuileNMOLT, HuileRaffineLT, NbCartonDiamaorU,
       					-- on calcule tous les kpis
       					case 
@@ -707,6 +708,24 @@ frowH4 <- fluidRow(
       ,solidHeader = TRUE 
       ,collapsible = TRUE 
       ,plotlyOutput("MoByTranche",height = "290px")
+  ),
+  
+)
+
+frowH5 <- fluidRow(
+  box(width = 6,
+      title = "PRODUCTION DU TOURTEAU PAR QUART"
+      ,status = "primary"
+      ,solidHeader = TRUE 
+      ,collapsible = TRUE 
+      ,amChart4Output("TtxByQuart", height = "350px")
+  ),
+  box(width = 6,
+      title = "PRODUCTION DE L'HUILE NEUTRE PAR QUART"
+      ,status = "primary"
+      ,solidHeader = TRUE 
+      ,collapsible = TRUE 
+      ,plotlyOutput("HnByQuart",height = "290px")
   ),
   
 )
@@ -1924,6 +1943,21 @@ Server <- function(input, output, session) {
                   
                 })
                 
+                    ##----------PRODUCTION TOURTEAU PAR QUART
+                
+                output$TtxByQuart <- renderAmChart4({
+                  #datef_huilerie_p <- dataf_Huilerie_param
+                  datef_huilerie_p<-dataf_Huilerie_param()[complete.cases(dataf_Huilerie_param()),]
+                  datef_huilerie_p<-datef_huilerie_p %>% group_by(Quart) %>% summarize(Tourteau=sum(Tourteau) * 60)
+                  
+                  
+                  dat <- data.frame(
+                       label = datef_huilerie_p$Quart, #c("Lithuania", "Czechia", "Ireland", "Germany", "Australia", "Austria"),
+                       value = datef_huilerie_p$Tourteau #c(260, 230, 200, 165, 139, 128)
+                     )
+                  
+                  amPieChart(data = dat, category = "label", value = "value", depth = 50)
+                })
                   
                   
                                   
@@ -4909,7 +4943,14 @@ Server <- function(input, output, session) {
                 
                 appendTab(inputId = "tabselected",
                           
-                          tabPanel("HUILERIES", frowH1, frowH2, frowH3, frowH4
+                          tabPanel("HUILERIES", frowH1, frowH2, frowH3, frowH4, frowH5
+                                   
+                          ) # closes tabPanel,
+                )
+                
+                appendTab(inputId = "tabselected",
+                          
+                          tabPanel("INFORMATIQUE"
                                    
                           ) # closes tabPanel,
                 )
