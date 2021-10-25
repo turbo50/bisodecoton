@@ -707,7 +707,7 @@ frowH4 <- fluidRow(
       ,status = "primary"
       ,solidHeader = TRUE 
       ,collapsible = TRUE 
-      ,plotlyOutput("MoByTranche",height = "290px")
+      ,amChart4Output("MoByTranche",height = "290px")
   ),
   
 )
@@ -718,14 +718,14 @@ frowH5 <- fluidRow(
       ,status = "primary"
       ,solidHeader = TRUE 
       ,collapsible = TRUE 
-      ,amChart4Output("TtxByQuart", height = "350px")
+      ,amChart4Output("TtxByQuart", height = "290px")
   ),
   box(width = 6,
       title = "PRODUCTION DE L'HUILE NEUTRE PAR QUART"
       ,status = "primary"
       ,solidHeader = TRUE 
       ,collapsible = TRUE 
-      ,plotlyOutput("HnByQuart",height = "290px")
+      ,amChart4Output("HnByQuart",height = "290px")
   ),
   
 )
@@ -1832,10 +1832,7 @@ Server <- function(input, output, session) {
                   output$ReceptionGraine <- renderPlotly({
                     dataf_Huilerie_<-dataf_Huilerie()[complete.cases(dataf_Huilerie()$GraineRecepKG),]
                     dataf_Huilerie_<-dataf_Huilerie_ %>% filter(Periode == input$Year & CodeUsine == input$Huilerie   & Month==input$Month)
-                    dataf_Huilerie_<-dataf_Huilerie_ %>%
-                    group_by(DateOpe) %>%
-                    summarize(GraineRecepKG=sum(GraineRecepKG),GraineMoKG=sum(0)
-                    )
+                    dataf_Huilerie_<-dataf_Huilerie_ %>% group_by(DateOpe) %>% summarize(GraineRecepKG=sum(GraineRecepKG),GraineMoKG=sum(0))
                   
                     dataf_Huilerie<-dataf_Huilerie()[complete.cases(dataf_Huilerie()$GraineMoKG),]
                     dataf_Huilerie<-dataf_Huilerie %>% filter(Periode == input$Year & CodeUsine == input$Huilerie  & Month==input$Month)
@@ -1917,30 +1914,18 @@ Server <- function(input, output, session) {
                 })
                 
                 ##----------Evaluation des mises en oeuvre par tranche horaire--------------
-                output$MoByTranche <- renderPlotly({
-                  datef_huilerie_p <- dataf_Huilerie_param
-                  datef_huilerie_p<-dataf_Huilerie_param()[complete.cases(dataf_Huilerie_param()$GraineMoKG),]
-                  datef_huilerie_p<-datef_huilerie_p %>% group_by(Equipe) %>% summarize(GraineMoKG=sum(GraineMoKG)/1000)
-                  datef_huilerie_p$Qte<-(datef_huilerie_p$GraineMoKG)
+                output$MoByTranche <- renderAmChart4({
+                  #datef_huilerie_p <- dataf_Huilerie_param
+                  datef_huilerie_p<-dataf_Huilerie_param()[complete.cases(dataf_Huilerie_param()),]
+                  datef_huilerie_p<-datef_huilerie_p %>% group_by(Equipe) %>% summarize(GraineMoKG=sum(GraineMoKG) / 1000)
                   
-                  datef_huilerie_p<-arrange(datef_huilerie_p, -Qte) 
-                  datef_huilerie_p = datef_huilerie_p %>% mutate_if(is.factor,
-                                                                    fct_explicit_na,
-                                                                    na_level = "NA")
                   
-                  datef_huilerie_p$Equipe  <- with(datef_huilerie_p, reorder(Equipe, -Qte))
-                  p<- ggplot(data=datef_huilerie_p, aes(x = reorder(Equipe, Qte), y = Qte, fill = Equipe)) + 
-                    geom_bar(stat = "identity")+ 
-                    coord_flip()+
-                    labs(x = "Tranche horaire", 
-                         y = "Quantite(t)"
-                    )+
-                    theme(axis.title.y=element_blank(),
-                          axis.text.y=element_blank(),
-                          axis.ticks.y=element_blank())
-                  #theme_minimal()
-                  ggplotly(p)
+                  dat <- data.frame(
+                    label = datef_huilerie_p$Equipe,
+                    value = datef_huilerie_p$GraineMoKG
+                  )
                   
+                  amPieChart(data = dat, category = "label", value = "value", depth = 50)
                 })
                 
                     ##----------PRODUCTION TOURTEAU PAR QUART
@@ -1952,9 +1937,25 @@ Server <- function(input, output, session) {
                   
                   
                   dat <- data.frame(
-                       label = datef_huilerie_p$Quart, #c("Lithuania", "Czechia", "Ireland", "Germany", "Australia", "Austria"),
-                       value = datef_huilerie_p$Tourteau #c(260, 230, 200, 165, 139, 128)
+                       label = datef_huilerie_p$Quart,
+                       value = datef_huilerie_p$Tourteau
                      )
+                  
+                  amPieChart(data = dat, category = "label", value = "value", depth = 50)
+                })
+                
+                ##----------PRODUCTION DE L'HUILE NEUTRE PAR QUART
+                
+                output$HnByQuart <- renderAmChart4({
+                  #datef_huilerie_p <- dataf_Huilerie_param
+                  datef_huilerie_p<-dataf_Huilerie_param()[complete.cases(dataf_Huilerie_param()),]
+                  datef_huilerie_p<-datef_huilerie_p %>% group_by(Quart) %>% summarize(HuileNProduitLT=sum(HuileNProduitLT))
+                  
+                  
+                  dat <- data.frame(
+                    label = datef_huilerie_p$Quart,
+                    value = datef_huilerie_p$HuileNProduitLT
+                  )
                   
                   amPieChart(data = dat, category = "label", value = "value", depth = 50)
                 })
