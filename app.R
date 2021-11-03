@@ -52,6 +52,21 @@ check_for_update <- function() {
 #---Obtention des jeux de donnees--------------------------------------------------------------
 #=========================================================================================================================
 
+get_dataProjet <- function() {
+  sqlQuery(cn,  
+    "
+                select d.Year as Periode, d.DayOfWeek, d.MonthName, 
+                    d.Date DateOpe, d.Month, realName, fisrtName, pr.name Projet, niveauAvancement NiveauAvancement,
+					          respectDelai RespectDelai
+                from FaitProjet p
+                left join DimDate d on d.IdDateSK=p.IdDateSK
+                left join DimTechnicien t on t.IdTechnicienSK=p.IdTechnicienSK
+                left join DimProjet pr on pr.idProjetSK=p.idProjetSK
+                where RealEndDate is null
+                
+          "  
+  )
+}
 
 get_dataHuilerie <- function() {
   sqlQuery(cn, 
@@ -165,6 +180,78 @@ value1G<-0
 
 VCodeSociete<<-'Sodecoton'
 
+get_dataIncident <- function() {
+  req<- 
+    "
+                select 
+                    d.Year as Periode, d.DayOfWeek, d.MonthName, 
+                    d.Date DateOpe, d.Month, realName, fisrtName, c.name Categorie, s.name Site, di.name Direction, idTickets Tickets
+      
+                      from FaitIncident i
+                      left join DimDate d on d.IdDateSK=i.IdDateSK
+                      left join DimTechnicien t on t.IdTechnicienSK=i.IdTechnicienSK
+                      left join DimCategorieInfo c on c.IdCategorieSK=i.IdCategorieSK
+                      left join DimSite s on s.idSiteSk=i.idSiteSk
+                      left join DimStatut st on st.idStatutSK = i.idStatutSK
+                      left join DimDirection di on di.idDirectionSK = i.idDirectionSK
+                      where d.Year= cast(? as varchar) and d.Month=cast(? as varchar) 
+          "  
+  myvalue<-data.frame(VYear, VMonth)
+  sqlExecute(cn, req, myvalue, fetch=TRUE)
+}
+
+get_dataProjetParam <- function() {
+  req<- 
+    "
+                select d.Year as Periode, d.DayOfWeek, d.MonthName, 
+                    d.Date DateOpe, d.Month, realName, fisrtName, pr.name Projet, niveauAvancement NiveauAvancement,
+					          respectDelai RespectDelai
+                from FaitProjet p
+                left join DimDate d on d.IdDateSK=p.IdDateSK
+                left join DimTechnicien t on t.IdTechnicienSK=p.IdTechnicienSK
+                left join DimProjet pr on pr.idProjetSK=p.idProjetSK   
+                where d.Year= cast(? as varchar) and d.Month=cast(? as varchar)     
+                
+          "  
+  myvalue<-data.frame(VYear, VMonth)
+  sqlExecute(cn, req, myvalue, fetch=TRUE)
+}
+
+get_dataConsommable <- function() {
+  req<- 
+    "
+                select d.Year as Periode, d.DayOfWeek, d.MonthName, d.Date DateOpe, d.Month, s.name Site, di.name Direction, Nombre
+                 from FaitConsommableInfo c
+                 left join DimDate d on d.IdDateSK=c.IdDateSK
+                 left join DimSite s on s.idSiteSk=c.idSiteSk
+                 left join DimDirection di on di.idDirectionSK=c.idDirectionSK                 
+                 where d.Year= cast(? as varchar) and d.Month=cast(? as varchar)    
+                
+          "  
+  myvalue<-data.frame(VYear, VMonth)
+  sqlExecute(cn, req, myvalue, fetch=TRUE)
+}
+
+get_dataSatisfaction <- function() {
+  req<-
+    "
+                select d.Year as Periode, d.DayOfWeek, d.MonthName, 
+                    d.Date DateOpe, d.Month, realName, fisrtName, s.name Site, c.Name, Poids ,
+					          Satisfaction, 
+							  case when(satisfaction <> -1) then satisfaction else 0 end Votant,
+							  case when(satisfaction = -1) then 1 else 0 end NonVotant
+                from FaitSatisfaction sa
+                left join DimDate d on d.IdDateSK=sa.IdDateSK
+                left join DimTechnicien t on t.IdTechnicienSK=sa.IdTechnicienSK
+                left join DimSite s on s.idSiteSk=sa.idSiteSk 
+				        left join DimCategorieInfo c on c.idCategorieSK = sa.idCategorieSK
+                where d.Year= cast(? as varchar) and d.Month=cast(? as varchar) 
+          "  
+  myvalue<-data.frame(VYear, VMonth)
+  sqlExecute(cn, req, myvalue, fetch=TRUE)
+}
+
+
 get_dataHuilerie_param <- function() {
   req<-"
                 select 
@@ -184,6 +271,7 @@ get_dataHuilerie_param <- function() {
                       left join DimTranche_horaire t on t.IdTrancheSK=p.IdTrancheSK
                       left join DimUsinehuilerie h on h.IdUsineSK=p.IdUsineSK
                       where d.Year= cast(? as varchar) and d.Month=cast(? as varchar) and h.CodeUsine = cast(? as varchar)
+                      order by q.NomQuart
                 
           "  
   myvalue<-data.frame(VYear, VMonth, VIdHuilerie)
@@ -732,6 +820,24 @@ frowH5 <- fluidRow(
   
 )
 #---------------FIN UI Huilerie--------------------------------------------
+
+#----------------UI Informatique-------------------------------------------
+PremiereLigne_Informatique <- fluidRow(
+  valueBoxOutput("NombreIncident", width = 2)
+  ,valueBoxOutput("NombreProjet", width = 2)
+  ,valueBoxOutput("QuantiteConsommable", width = 2)
+  
+)
+
+
+DeuxiemeLigne_Informatique <- fluidRow(
+   valueBoxOutput("TauxRespectDelaiProjet", width = 2)
+  ,valueBoxOutput("TauxSatisfactionUtilisateur", width = 2)
+  ,valueBoxOutput("TauxParticipation", width = 2)
+)
+
+
+#----------------FIN UI Informatique-------------------------------------------
 
 
 
@@ -1604,6 +1710,7 @@ Server <- function(input, output, session) {
     }
     )
     
+    #---get data for huilerie------------
     dataf_Huilerie = reactive({
       invalidateLater(900000,session)
       input$Year
@@ -1619,6 +1726,45 @@ Server <- function(input, output, session) {
       input$Month
       get_dataHuilerie_param()
     })
+    #--------All datas get for Huilerie----------
+    #---get data for Informatique------------
+    dataf_Incident_param = reactive({
+      invalidateLater(900000,session)
+      input$Year
+      input$Huilerie
+      input$Month
+      get_dataIncident()
+    })
+    
+    dataf_Projet = reactive({
+      invalidateLater(900000,session)
+      get_dataProjet()
+    })
+    
+    dataf_Projet_param = reactive({
+      invalidateLater(900000,session)
+      input$Year
+      input$Huilerie
+      input$Month
+      get_dataProjetParam()
+    })
+    
+    dataf_Consommable_param = reactive({
+      invalidateLater(900000,session)
+      input$Year
+      input$Huilerie
+      input$Month
+      get_dataConsommable()
+    })
+    
+    dataf_Satisfaction_param = reactive({
+      invalidateLater(900000,session)
+      input$Year
+      input$Huilerie
+      input$Month
+      get_dataSatisfaction()
+    })
+    #--------All datas get for Informatique----------
     
     #--- On recupere toutes les huileries--------
     reqHuilerie<-
@@ -1923,6 +2069,67 @@ Server <- function(input, output, session) {
                   
                                   
                 #---------------FIN Chargement des widgets HUILERIES-----------------------
+                
+                #---------------Chargement des widgets INFORMATIQUE-----------------------
+                #---------Premiere ligne page Informatique : Ligne des Kpis------
+                #-- Kpi Nombre d'incident 
+                output$NombreIncident<-renderValueBox({
+                  dataf_Incident<-dataf_Incident_param()
+                  NombreIncident_<-length(dataf_Incident$Tickets)
+                  valueBox(formatC(NombreIncident_, digits = 0, format ="f",big.mark=' ' ), 'Nombre d\'Incidents', color = "green")
+                  
+                })
+                #-- Kpi Nombre de projets 
+                output$NombreProjet<-renderValueBox({
+                  dataf_Projet<-dataf_Projet()
+                  NombreProjet_<-length(dataf_Projet$Projet)
+                  valueBox(formatC(NombreProjet_, digits = 0, format ="f",big.mark=' ' ), 'Nombre de projets', color = "green")
+                  
+                })
+                #-- Kpi Quantite de consommables 
+                output$QuantiteConsommable<-renderValueBox({
+                  dataf_Consommable<-dataf_Consommable_param()
+                  QteConsommable_<-sum(dataf_Consommable$Nombre)
+                  valueBox(formatC(QteConsommable_, digits = 0, format ="f",big.mark=' ' ), 'Quantite de consommables(U)', color = "green")
+                  
+                })
+                
+                
+                #-- Kpi TauxRespectDelaiProjet 
+                output$TauxRespectDelaiProjet<-renderValueBox({
+                  dataf_Projet<-dataf_Projet_param()
+                  TauxRespectDelai_<-mean(dataf_Projet$RespectDelai)
+                  valueBox(formatC(TauxRespectDelai_, digits = 2, format ="f",big.mark=' ' ), 'Taux-respect-delai-projets(%)', color = "black")
+                  
+                })
+                
+                
+                #-- Kpi TauxSatisfactionUtilisateur 
+                output$TauxSatisfactionUtilisateur<-renderValueBox({
+                  dataf_Satisfaction<-dataf_Satisfaction_param()
+                  data_votant<-dataf_Satisfaction %>% filter(Votant != 0)
+                  #Calcul de la somme des notes
+                  NoteTotal <- sum(data_votant$Votant)
+                  #Calcul du taux de satisfaction
+                  TauxSatis <-  ((NoteTotal) / sum(data_votant$Poids)) * 100
+                  
+                  valueBox(formatC(TauxSatis, digits = 2, format ="f",big.mark=' ' ), 'Taux de satisfaction(%)', color = "black")
+                  
+                })
+                
+                
+                #-- Kpi TauxParticipation 
+                output$TauxParticipation<-renderValueBox({
+                  dataf_Satisfaction<-dataf_Satisfaction_param()
+                  data_votant<-dataf_Satisfaction %>% filter(Votant != 0)
+                  #Calcul du taux de participation
+                  TauxParticipation <-  (length(data_votant$Votant) / length(dataf_Satisfaction$Votant)) * 100
+                  
+                  valueBox(formatC(TauxParticipation, digits = 2, format ="f",big.mark=' ' ), 'Taux de participation(%)', color = "black")
+                  
+                })
+                
+                #---------------FIN Chargement des widgets INFORMATIQUE-----------------------
                 
                 
                 #creating the valueBoxOutput content
@@ -4911,7 +5118,7 @@ Server <- function(input, output, session) {
                 
                 appendTab(inputId = "tabselected",
                           
-                          tabPanel("INFORMATIQUE"
+                          tabPanel("INFORMATIQUE", PremiereLigne_Informatique, DeuxiemeLigne_Informatique
                                    
                           ) # closes tabPanel,
                 )
