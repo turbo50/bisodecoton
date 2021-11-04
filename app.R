@@ -29,6 +29,7 @@ library(scales)
 library(lubridate)
 library(rAmCharts4)
 library(rAmCharts)
+library(reactable)
 #library(shinydashboardPlus)
 #library(shinyscreenshot)
 
@@ -56,8 +57,8 @@ get_dataProjet <- function() {
   sqlQuery(cn,  
     "
                 select d.Year as Periode, d.DayOfWeek, d.MonthName, 
-                    d.Date DateOpe, d.Month, realName, fisrtName, pr.name Projet, niveauAvancement NiveauAvancement,
-					          respectDelai RespectDelai
+                    d.Date DateOpe, d.Month, realName, fisrtName, pr.name Projet,  NiveauAvancement,
+					           RespectDelai, t.IdTechnicienSK, t.Name
                 from FaitProjet p
                 left join DimDate d on d.IdDateSK=p.IdDateSK
                 left join DimTechnicien t on t.IdTechnicienSK=p.IdTechnicienSK
@@ -180,6 +181,42 @@ value1G<-0
 
 VCodeSociete<<-'Sodecoton'
 
+
+get_dataIncident_By_Direction <- function() {
+  req<- 
+    "
+                select 
+                   di.Name,  count(idTickets) Nombre
+      
+                      from FaitIncident i
+                      left join DimDate d on d.IdDateSK=i.IdDateSK
+                      left join DimDirection di on di.idDirectionSK = i.idDirectionSK
+                       where d.Year= cast(? as varchar) and d.Month=cast(? as varchar)
+					  group by di.Name order by Nombre desc
+                       
+          "  
+  myvalue<-data.frame(VYear, VMonth)
+  sqlExecute(cn, req, myvalue, fetch=TRUE)
+}
+
+get_dataIncident_By_Site <- function() {
+  req<- 
+    "
+               select 
+                   top 5 s.Name,  count(idTickets) Nombre
+      
+                      from FaitIncident i
+                      left join DimDate d on d.IdDateSK=i.IdDateSK
+                      left join DimSite s on s.idSiteSk=i.idSiteSk
+                      where d.Year= cast(? as varchar) and d.Month=cast(? as varchar)
+                      group by s.Name order by Nombre desc
+                       
+          "  
+  myvalue<-data.frame(VYear, VMonth)
+  sqlExecute(cn, req, myvalue, fetch=TRUE)
+}
+
+
 get_dataIncident <- function() {
   req<- 
     "
@@ -200,20 +237,57 @@ get_dataIncident <- function() {
   sqlExecute(cn, req, myvalue, fetch=TRUE)
 }
 
+get_dataIncidentRapport <- function() {
+  req<- 
+    "
+                 select  c.name Categorie, s.name Site, di.name Direction,
+					count(*) Nombre
+      
+                      from FaitIncident i
+                      left join DimDate d on d.IdDateSK=i.IdDateSK
+                      left join DimTechnicien t on t.IdTechnicienSK=i.IdTechnicienSK
+                      left join DimCategorieInfo c on c.IdCategorieSK=i.IdCategorieSK
+                      left join DimSite s on s.idSiteSk=i.idSiteSk
+                      left join DimStatut st on st.idStatutSK = i.idStatutSK
+                      left join DimDirection di on di.idDirectionSK = i.idDirectionSK
+                      where d.Year= cast(? as varchar)
+                      group by c.name , s.name , di.name
+					            order by c.name
+          "  
+  myvalue<-data.frame(VYear)
+  sqlExecute(cn, req, myvalue, fetch=TRUE)
+}
+
 get_dataProjetParam <- function() {
   req<- 
     "
                 select d.Year as Periode, d.DayOfWeek, d.MonthName, 
-                    d.Date DateOpe, d.Month, realName, fisrtName, pr.name Projet, niveauAvancement NiveauAvancement,
-					          respectDelai RespectDelai
+                    d.Date DateOpe, d.Month, realName, fisrtName, pr.name LeProjet,  NiveauAvancement,
+					           RespectDelai, t.IdTechnicienSK, t.Name
                 from FaitProjet p
                 left join DimDate d on d.IdDateSK=p.IdDateSK
                 left join DimTechnicien t on t.IdTechnicienSK=p.IdTechnicienSK
                 left join DimProjet pr on pr.idProjetSK=p.idProjetSK   
-                where d.Year= cast(? as varchar) and d.Month=cast(? as varchar)     
+                where d.Year= cast(? as varchar)     
                 
           "  
-  myvalue<-data.frame(VYear, VMonth)
+  myvalue<-data.frame(VYear)
+  sqlExecute(cn, req, myvalue, fetch=TRUE)
+}
+
+get_EvolProjetParam <- function() {
+  req<- 
+    "
+                select pr.name Projet, t.Name, NiveauAvancement, RespectDelai
+                from FaitProjet p
+                left join DimDate d on d.IdDateSK=p.IdDateSK
+                left join DimTechnicien t on t.IdTechnicienSK=p.IdTechnicienSK
+                left join DimProjet pr on pr.idProjetSK=p.idProjetSK   
+                where d.Year= cast(? as varchar) 
+                order by d.Year , d.DayOfWeek, d.MonthName
+                
+          "  
+  myvalue<-data.frame(VYear)
   sqlExecute(cn, req, myvalue, fetch=TRUE)
 }
 
@@ -229,6 +303,22 @@ get_dataConsommable <- function() {
                 
           "  
   myvalue<-data.frame(VYear, VMonth)
+  sqlExecute(cn, req, myvalue, fetch=TRUE)
+}
+
+get_dataConsommableRapport <- function() {
+  req<- 
+    "
+                select  s.name Site, di.name Direction, sum(Nombre) Nombre
+                 from FaitConsommableInfo c
+                 left join DimDate d on d.IdDateSK=c.IdDateSK
+                 left join DimSite s on s.idSiteSk=c.idSiteSk
+                 left join DimDirection di on di.idDirectionSK=c.idDirectionSK                 
+                 where d.Year= cast(? as varchar) 
+                 group by s.name, di.name
+                
+          "  
+  myvalue<-data.frame(VYear)
   sqlExecute(cn, req, myvalue, fetch=TRUE)
 }
 
@@ -834,8 +924,62 @@ DeuxiemeLigne_Informatique <- fluidRow(
    valueBoxOutput("TauxRespectDelaiProjet", width = 2)
   ,valueBoxOutput("TauxSatisfactionUtilisateur", width = 2)
   ,valueBoxOutput("TauxParticipation", width = 2)
+  ,valueBoxOutput("TauxDisponibiliteService", width = 2)
+  ,valueBoxOutput("TauxDisponibiliteServeur", width = 2)
+  ,valueBoxOutput("NombreChangement", width = 2)
 )
 
+TroisiemeLigne_Informatique <- fluidRow(
+  box(width = 6,
+      title = "RAPPORT ANNUEL SUR L'EVOLUTION DES PROJETS"
+      ,status = "primary"
+      ,solidHeader = TRUE 
+      ,collapsible = TRUE 
+      ,reactableOutput("TabEvolutionProjet", height = "290px", width = "100%")
+  ),
+  box(width = 6,
+      title = "RAPPORT ANNUEL SUR L'AFFECTATION DE CONSOMMABLES"
+      ,status = "primary"
+      ,solidHeader = TRUE 
+      ,collapsible = TRUE 
+      ,reactableOutput("TabRapportConsommable", height = "290px", width = "100%")
+  )
+)
+
+QuatriemeLigne_Informatique <- fluidRow(
+  box(width = 6,
+      title = "RAPPORT ANNUEL SUR LES INCIDENTS"
+      ,status = "primary"
+      ,solidHeader = TRUE 
+      ,collapsible = TRUE 
+      ,reactableOutput("TabRapportIncident", height = "350px", width = "100%")
+  ),
+  box(width = 6,
+       title = "INCIDENTS ANNUEL PAR DIRECTION"
+       ,status = "primary"
+       ,solidHeader = TRUE 
+       ,collapsible = TRUE 
+       ,amChartsOutput("INCIDENTSANNUELBYDIRECTION", height = "350px", width = "100%")
+  )
+)
+
+
+CinquiemeLigne_Informatique <- fluidRow(
+  box(width = 6,
+      title = "INCIDENTS MENSUEL PAR DIRECTION"
+      ,status = "primary"
+      ,solidHeader = TRUE 
+      ,collapsible = TRUE 
+      ,amChartsOutput("INCIDENTSMENSUELBYDIRECTION", height = "350px", width = "100%")
+  ),
+  box(width = 6,
+      title = "INCIDENTS PAR SITE"
+      ,status = "primary"
+      ,solidHeader = TRUE 
+      ,collapsible = TRUE 
+      ,amChartsOutput("INCIDENTSBYSITE", height = "350px", width = "100%")
+  )
+)
 
 #----------------FIN UI Informatique-------------------------------------------
 
@@ -1731,38 +1875,69 @@ Server <- function(input, output, session) {
     dataf_Incident_param = reactive({
       invalidateLater(900000,session)
       input$Year
-      input$Huilerie
       input$Month
       get_dataIncident()
     })
     
-    dataf_Projet = reactive({
+    dataf_dataIncidentRapport_param = reactive({
       invalidateLater(900000,session)
+      input$Year
+      get_dataIncidentRapport()
+    })
+    
+    dataf_getProjet = reactive({
+      invalidateLater(900000,session)
+      input$Year
+      input$Month
       get_dataProjet()
     })
     
     dataf_Projet_param = reactive({
       invalidateLater(900000,session)
       input$Year
-      input$Huilerie
       input$Month
       get_dataProjetParam()
+    })
+    
+    
+    dataf_Evol_Projet_param = reactive({
+      invalidateLater(900000,session)
+      input$Year
+      get_EvolProjetParam()
     })
     
     dataf_Consommable_param = reactive({
       invalidateLater(900000,session)
       input$Year
-      input$Huilerie
       input$Month
       get_dataConsommable()
+    })
+    
+    
+    dataf_dataConsommableRapport_param = reactive({
+      invalidateLater(900000,session)
+      input$Year
+      get_dataConsommableRapport()
     })
     
     dataf_Satisfaction_param = reactive({
       invalidateLater(900000,session)
       input$Year
-      input$Huilerie
       input$Month
       get_dataSatisfaction()
+    })
+    
+    dataf_dataIncident_By_Direction = reactive({
+      invalidateLater(900000,session)
+      input$Year
+      input$Month
+      get_dataIncident_By_Direction()
+    })
+    dataf_dataIncident_By_Site = reactive({
+      invalidateLater(900000,session)
+      input$Year
+      input$Month
+      dataf_dataIncident_By_Site()
     })
     #--------All datas get for Informatique----------
     
@@ -2076,21 +2251,23 @@ Server <- function(input, output, session) {
                 output$NombreIncident<-renderValueBox({
                   dataf_Incident<-dataf_Incident_param()
                   NombreIncident_<-length(dataf_Incident$Tickets)
-                  valueBox(formatC(NombreIncident_, digits = 0, format ="f",big.mark=' ' ), 'Nombre d\'Incidents', color = "green")
+                  valueBox(formatC(NombreIncident_, digits = 0, format ="f",big.mark=' ' ), 'Incident(s) declare(s)', color = "green")
                   
                 })
                 #-- Kpi Nombre de projets 
                 output$NombreProjet<-renderValueBox({
-                  dataf_Projet<-dataf_Projet()
+                  dataf_Projet<-dataf_Projet_param() #dataf_getProjet()
+                  dataf_Projet<- dataf_Projet %>% filter(Periode == input$Year  & Month==input$Month)
                   NombreProjet_<-length(dataf_Projet$Projet)
-                  valueBox(formatC(NombreProjet_, digits = 0, format ="f",big.mark=' ' ), 'Nombre de projets', color = "green")
+                  valueBox(formatC(NombreProjet_, digits = 0, format ="f",big.mark=' ' ), 'Projets cree(s)', color = "green")
                   
                 })
                 #-- Kpi Quantite de consommables 
                 output$QuantiteConsommable<-renderValueBox({
                   dataf_Consommable<-dataf_Consommable_param()
+                  dataf_Consommable<- dataf_Consommable %>% filter(Periode == input$Year  & Month==input$Month)
                   QteConsommable_<-sum(dataf_Consommable$Nombre)
-                  valueBox(formatC(QteConsommable_, digits = 0, format ="f",big.mark=' ' ), 'Quantite de consommables(U)', color = "green")
+                  valueBox(formatC(QteConsommable_, digits = 0, format ="f",big.mark=' ' ), 'Consommable(s) affecte(s)', color = "green")
                   
                 })
                 
@@ -2127,6 +2304,79 @@ Server <- function(input, output, session) {
                   
                   valueBox(formatC(TauxParticipation, digits = 2, format ="f",big.mark=' ' ), 'Taux de participation(%)', color = "black")
                   
+                })
+                #-- Kpi TauxDisponibiliteService 
+                output$TauxDisponibiliteService<-renderValueBox({
+                  
+                  valueBox(formatC(0, digits = 2, format ="f",big.mark=' ' ), 'Taux-Disponibilite-Services(%)', color = "red")
+                  
+                })
+                #-- Kpi TauxDisponibiliteServeur 
+                output$TauxDisponibiliteServeur<-renderValueBox({
+                  valueBox(formatC(0, digits = 2, format ="f",big.mark=' ' ), 'Taux-Disponibilite-Serveurs(%)', color = "red")
+                  
+                })
+                #-- Kpi NombreChangement 
+                output$NombreChangement<-renderValueBox({
+                  valueBox(formatC(0, digits = 0, format ="f",big.mark=' ' ), 'Nombre de changement', color = "red")
+                  
+                })
+                
+                #----EVOLUTION ANNUEL DES PROJETS-------------
+                output$TabEvolutionProjet <- renderReactable({
+                  dataf_Projet<-dataf_Evol_Projet_param()
+                  reactable(dataf_Projet, selection = "multiple", onClick = "select",
+                            sortable = TRUE, searchable = TRUE, defaultPageSize = 2, resizable = TRUE 
+                  )
+                })
+                
+                #----RAPPORT ANNUEL SUR LES AFECTATIONS DE CONSOMMABLE-------------
+                output$TabRapportConsommable <- renderReactable({
+                  dataf_Consommable_rapport<-dataf_dataConsommableRapport_param()
+                  reactable(dataf_Consommable_rapport, selection = "multiple", onClick = "select",
+                            sortable = TRUE, searchable = TRUE, defaultPageSize = 2, resizable = TRUE 
+                  )
+                })
+                
+                #----RAPPORT ANNUEL SUR LES INCIDENTS -------------
+                output$TabRapportIncident <- renderReactable({
+                  dataf_Incident_rapport<-dataf_dataIncidentRapport_param()
+                  reactable(dataf_Incident_rapport, selection = "multiple", onClick = "select",
+                            sortable = TRUE, searchable = TRUE, defaultPageSize = 4, resizable = TRUE ,groupBy = "Categorie",
+                            columns = list(
+                              Site = colDef(aggregate = "frequency"),
+                              Direction = colDef(aggregate = "frequency"),
+                              Nombre = colDef(aggregate = "sum")
+                            )
+                  )
+                })
+                
+                #---INCIDENT ANNUEL PAR DIRECTION----------
+                output$INCIDENTSANNUELBYDIRECTION <- renderAmCharts({
+                  
+                  dataf_dataIncident_By_Categories<-dataf_dataIncidentRapport_param()[complete.cases(dataf_dataIncidentRapport_param()),]
+                  dataf_dataIncident_By_Categories<-dataf_dataIncident_By_Categories %>% group_by(Direction) %>% summarize(Nombre=sum(Nombre))
+                  
+                  
+                  dat <- data.frame(
+                    Name = dataf_dataIncident_By_Categories$Direction,
+                    Quantite = dataf_dataIncident_By_Categories$Nombre
+                  )  
+                  amBarplot(x = "Name", y = "Quantite", data = dat, depth = 20, labelRotation = -45, legend = TRUE)
+                })
+                
+                #---INCIDENT MENSUEL PAR DIRECTIONS----------
+                output$INCIDENTSMENSUELBYDIRECTION <- renderAmCharts({
+                  
+                  dataf_dataIncident_By_Direction<-dataf_dataIncident_By_Direction()[complete.cases(dataf_dataIncident_By_Direction()),]
+                  dataf_dataIncident_By_Direction<-dataf_dataIncident_By_Direction %>% group_by(Name) %>% summarize(Nombre=sum(Nombre))
+                  
+                  
+                  dat <- data.frame(
+                    Name = dataf_dataIncident_By_Direction$Name,
+                    Quantite = dataf_dataIncident_By_Direction$Nombre
+                  )  
+                  amBarplot(x = "Name", y = "Quantite", data = dat, depth = 20, labelRotation = -45, legend = TRUE)
                 })
                 
                 #---------------FIN Chargement des widgets INFORMATIQUE-----------------------
@@ -5118,7 +5368,8 @@ Server <- function(input, output, session) {
                 
                 appendTab(inputId = "tabselected",
                           
-                          tabPanel("INFORMATIQUE", PremiereLigne_Informatique, DeuxiemeLigne_Informatique
+                          tabPanel("INFORMATIQUE", PremiereLigne_Informatique, DeuxiemeLigne_Informatique, TroisiemeLigne_Informatique
+                                   , QuatriemeLigne_Informatique, CinquiemeLigne_Informatique
                                    
                           ) # closes tabPanel,
                 )
